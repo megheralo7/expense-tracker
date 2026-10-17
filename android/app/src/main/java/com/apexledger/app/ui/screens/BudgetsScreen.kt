@@ -6,10 +6,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,11 +26,14 @@ fun BudgetsScreen(
     onBack: () -> Unit
 ) {
     val budgets by viewModel.budgets.collectAsState()
+    var showAddDialog by remember { mutableStateOf(false) }
+    var catInput by remember { mutableStateOf("") }
+    var limitInput by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Budget Control", color = TextPrimary, fontWeight = FontWeight.Bold) },
+                title = { Text("Budget Control & Alerts", color = TextPrimary, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
@@ -38,6 +41,15 @@ fun BudgetsScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground)
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showAddDialog = true },
+                containerColor = EmeraldPrimary,
+                contentColor = DarkBackground
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Budget")
+            }
         },
         containerColor = DarkBackground
     ) { padding ->
@@ -50,7 +62,7 @@ fun BudgetsScreen(
         ) {
             item {
                 Text(
-                    "Monthly Category Budgets & 80% Push Alert Locks",
+                    "Monthly Category Budgets & 80% Automated Push Notification Guardrails",
                     fontSize = 12.sp,
                     color = TextSecondary
                 )
@@ -74,12 +86,26 @@ fun BudgetsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(b.category, fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
-                            Text(
-                                String.format("$%.0f / $%.0f", spent, b.monthlyLimit),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (isExceeded) RoseExpense else if (isWarning) AmberWarning else EmeraldPrimary
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    "${viewModel.formatAmount(spent)} / ${viewModel.formatAmount(b.monthlyLimit)}",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (isExceeded) RoseExpense else if (isWarning) AmberWarning else EmeraldPrimary
+                                )
+
+                                IconButton(
+                                    onClick = { viewModel.deleteBudget(b.id) },
+                                    modifier = Modifier.size(28.dp).padding(start = 4.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = "Delete",
+                                        tint = TextMuted,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(10.dp))
@@ -114,6 +140,61 @@ fun BudgetsScreen(
                     }
                 }
             }
+
+            item {
+                Spacer(modifier = Modifier.height(30.dp))
+            }
+        }
+
+        if (showAddDialog) {
+            AlertDialog(
+                onDismissRequest = { showAddDialog = false },
+                title = { Text("Add Budget Category", color = TextPrimary) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedTextField(
+                            value = catInput,
+                            onValueChange = { catInput = it },
+                            label = { Text("Category Name") },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = EmeraldPrimary,
+                                focusedLabelColor = EmeraldPrimary
+                            )
+                        )
+                        OutlinedTextField(
+                            value = limitInput,
+                            onValueChange = { limitInput = it },
+                            label = { Text("Monthly Limit ($)") },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = EmeraldPrimary,
+                                focusedLabelColor = EmeraldPrimary
+                            )
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            val lim = limitInput.toDoubleOrNull() ?: 0.0
+                            if (lim > 0 && catInput.isNotBlank()) {
+                                viewModel.addBudget(catInput, lim)
+                                showAddDialog = false
+                                catInput = ""
+                                limitInput = ""
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary)
+                    ) {
+                        Text("Save", color = DarkBackground)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showAddDialog = false }) {
+                        Text("Cancel", color = TextSecondary)
+                    }
+                },
+                containerColor = DarkSurface
+            )
         }
     }
 }

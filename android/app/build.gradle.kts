@@ -8,7 +8,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.apexledger.app"
+        applicationId = "com.aistudio.apexledger.fnxqz"
         minSdk = 26
         targetSdk = 34
         versionCode = 1

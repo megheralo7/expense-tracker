@@ -39,7 +39,7 @@ export const AndroidAppHub: React.FC = () => {
   const [copiedCodeKey, setCopiedCodeKey] = useState<string | null>(null);
   const [widgetFeedback, setWidgetFeedback] = useState<string | null>(null);
 
-  const currentDevUrl = 'https://ais-dev-q46ntrshvlu4pjruwo3jw5-1069535225897.asia-southeast1.run.app';
+  const currentDevUrl = 'https://ais-dev-uqcpl3naib5or5oo3r27kt-271113373928.asia-southeast1.run.app';
 
   const codeSnippets: Record<string, { filename: string; language: string; content: string }> = {
     ComposeMainActivity: {
@@ -194,6 +194,103 @@ class QuickLogAppWidgetProvider : AppWidgetProvider() {
     </application>
 </manifest>`,
     },
+    SubscriptionsScreen: {
+      filename: 'android/app/src/main/java/com/apexledger/app/ui/screens/SubscriptionsScreen.kt',
+      language: 'kotlin',
+      content: `package com.apexledger.app.ui.screens
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import com.apexledger.app.viewmodel.FinanceViewModel
+
+@Composable
+fun SubscriptionsScreen(viewModel: FinanceViewModel, onBack: () -> Unit) {
+    val subscriptions by viewModel.subscriptions.collectAsState()
+    val totalMonthlySaaS = viewModel.getTotalMonthlySubscriptions()
+
+    Scaffold(containerColor = DarkBackground) { padding ->
+        LazyColumn(modifier = Modifier.padding(padding)) {
+            item { MonthlySaaSBurnCard(total = totalMonthlySaaS) }
+            items(subscriptions) { sub -> SubscriptionItemCard(sub) }
+        }
+    }
+}`,
+    },
+    TaxScreen: {
+      filename: 'android/app/src/main/java/com/apexledger/app/ui/screens/TaxScreen.kt',
+      language: 'kotlin',
+      content: `package com.apexledger.app.ui.screens
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import com.apexledger.app.viewmodel.FinanceViewModel
+
+@Composable
+fun TaxScreen(viewModel: FinanceViewModel, onBack: () -> Unit) {
+    val totalDeductible = viewModel.getTotalTaxDeductible()
+    val estimatedSavings = viewModel.getEstimatedTaxSavings(0.25)
+
+    Scaffold(containerColor = DarkBackground) { padding ->
+        LazyColumn(modifier = Modifier.padding(padding)) {
+            item { ScheduleCWriteOffBanner(total = totalDeductible, savings = estimatedSavings) }
+            item { IrsDeductionCategoriesList() }
+        }
+    }
+}`,
+    },
+    BankSyncScreen: {
+      filename: 'android/app/src/main/java/com/apexledger/app/ui/screens/BankSyncScreen.kt',
+      language: 'kotlin',
+      content: `package com.apexledger.app.ui.screens
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import com.apexledger.app.viewmodel.FinanceViewModel
+
+@Composable
+fun BankSyncScreen(viewModel: FinanceViewModel, onBack: () -> Unit) {
+    val banks by viewModel.bankConnections.collectAsState()
+
+    Scaffold(containerColor = DarkBackground) { padding ->
+        LazyColumn(modifier = Modifier.padding(padding)) {
+            item { PlaidSyncHeader() }
+            items(banks) { bank -> BankCard(bank, onSync = { viewModel.refreshBankSync(bank.id) }) }
+        }
+    }
+}`,
+    },
+    CrossPlatformSync: {
+      filename: 'android/app/src/main/java/com/apexledger/app/ui/screens/CrossPlatformSyncScreen.kt',
+      language: 'kotlin',
+      content: `package com.apexledger.app.ui.screens
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import com.apexledger.app.viewmodel.FinanceViewModel
+
+@Composable
+fun CrossPlatformSyncScreen(viewModel: FinanceViewModel, onBack: () -> Unit) {
+    val devices by viewModel.syncDevices.collectAsState()
+
+    Scaffold(containerColor = DarkBackground) { padding ->
+        LazyColumn(modifier = Modifier.padding(padding)) {
+            item { AesVaultStatusBanner(onTriggerSync = { viewModel.triggerCloudSync() }) }
+            items(devices) { dev -> DeviceCard(dev) }
+        }
+    }
+}`,
+    },
     BuildGradle: {
       filename: 'android/app/build.gradle.kts',
       language: 'kotlin',
@@ -207,7 +304,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.apexledger.app"
+        applicationId = "com.aistudio.apexledger.fnxqz"
         minSdk = 26
         targetSdk = 34
         versionCode = 1

@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,7 +31,9 @@ fun TransactionsScreen(
 
     var descInput by remember { mutableStateOf("") }
     var amountInput by remember { mutableStateOf("") }
-    var catInput by remember { mutableStateOf("Food & Dining") }
+    var typeInput by remember { mutableStateOf("expense") }
+    var catInput by remember { mutableStateOf("Software & SaaS") }
+    var taxDeductibleInput by remember { mutableStateOf(true) }
 
     val filteredList = when (selectedFilter) {
         "income" -> transactions.filter { it.type == "income" }
@@ -76,7 +79,7 @@ fun TransactionsScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 listOf(
-                    "all" to "All",
+                    "all" to "All (${transactions.size})",
                     "expense" to "Expenses",
                     "income" to "Income",
                     "tax" to "Tax Deductible"
@@ -103,7 +106,7 @@ fun TransactionsScreen(
                 items(filteredList) { tx ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(14.dp),
                         colors = CardDefaults.cardColors(containerColor = DarkSurface)
                     ) {
                         Row(
@@ -130,23 +133,49 @@ fun TransactionsScreen(
                                     if (tx.taxDeductible) {
                                         Spacer(modifier = Modifier.width(6.dp))
                                         Text(
-                                            "Tax Deductible",
+                                            "• Tax Deductible",
                                             fontSize = 10.sp,
                                             color = EmeraldPrimary,
                                             fontWeight = FontWeight.Medium
                                         )
                                     }
                                 }
+                                if (tx.tags.isNotBlank()) {
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "Tags: ${tx.tags}",
+                                        fontSize = 9.sp,
+                                        color = TextMuted
+                                    )
+                                }
                             }
 
-                            Text(
-                                text = (if (tx.type == "income") "+" else "-") + String.format("$%,.2f", tx.amount),
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (tx.type == "income") EmeraldPrimary else RoseExpense
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = (if (tx.type == "income") "+" else "-") + viewModel.formatAmount(tx.amount),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (tx.type == "income") EmeraldPrimary else RoseExpense
+                                )
+
+                                IconButton(
+                                    onClick = { viewModel.deleteTransaction(tx.id) },
+                                    modifier = Modifier.size(28.dp).padding(start = 4.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = "Delete",
+                                        tint = TextMuted,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
                         }
                     }
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(30.dp))
                 }
             }
         }
@@ -154,9 +183,22 @@ fun TransactionsScreen(
         if (showAddDialog) {
             AlertDialog(
                 onDismissRequest = { showAddDialog = false },
-                title = { Text("Log New Expense", color = TextPrimary) },
+                title = { Text("Log Transaction", color = TextPrimary) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilterChip(
+                                selected = typeInput == "expense",
+                                onClick = { typeInput = "expense" },
+                                label = { Text("Expense") }
+                            )
+                            FilterChip(
+                                selected = typeInput == "income",
+                                onClick = { typeInput = "income" },
+                                label = { Text("Income") }
+                            )
+                        }
+
                         OutlinedTextField(
                             value = descInput,
                             onValueChange = { descInput = it },
@@ -169,12 +211,30 @@ fun TransactionsScreen(
                         OutlinedTextField(
                             value = amountInput,
                             onValueChange = { amountInput = it },
-                            label = { Text("Amount ($)") },
+                            label = { Text("Amount") },
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = EmeraldPrimary,
                                 focusedLabelColor = EmeraldPrimary
                             )
                         )
+                        OutlinedTextField(
+                            value = catInput,
+                            onValueChange = { catInput = it },
+                            label = { Text("Category") },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = EmeraldPrimary,
+                                focusedLabelColor = EmeraldPrimary
+                            )
+                        )
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(
+                                checked = taxDeductibleInput,
+                                onCheckedChange = { taxDeductibleInput = it },
+                                colors = CheckboxDefaults.colors(checkedColor = EmeraldPrimary)
+                            )
+                            Text("Tax Deductible (Schedule C)", fontSize = 11.sp, color = TextPrimary)
+                        }
                     }
                 },
                 confirmButton = {
@@ -182,7 +242,15 @@ fun TransactionsScreen(
                         onClick = {
                             val amt = amountInput.toDoubleOrNull() ?: 0.0
                             if (amt > 0 && descInput.isNotBlank()) {
-                                viewModel.logExpense(descInput, amt, catInput, "Android App")
+                                viewModel.addTransaction(
+                                    type = typeInput,
+                                    amount = amt,
+                                    category = catInput,
+                                    description = descInput,
+                                    date = "2026-10-17",
+                                    taxDeductible = taxDeductibleInput,
+                                    taxCategory = if (taxDeductibleInput) "Software & Online Services" else ""
+                                )
                                 showAddDialog = false
                                 descInput = ""
                                 amountInput = ""

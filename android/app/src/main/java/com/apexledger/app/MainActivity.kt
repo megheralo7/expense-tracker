@@ -27,7 +27,7 @@ class MainActivity : AppCompatActivity() {
         configureWebView()
 
         // Load the live cloud applet URL
-        val appUrl = "https://ais-dev-q46ntrshvlu4pjruwo3jw5-1069535225897.asia-southeast1.run.app"
+        val appUrl = "https://ais-dev-uqcpl3naib5or5oo3r27kt-271113373928.asia-southeast1.run.app"
         webView.loadUrl(appUrl)
     }
 

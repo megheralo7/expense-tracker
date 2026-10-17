@@ -1,22 +1,16 @@
 package com.apexledger.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Coffee
-import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.Restaurant
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.TrendingDown
-import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,14 +26,22 @@ import com.apexledger.app.viewmodel.FinanceViewModel
 fun DashboardScreen(
     viewModel: FinanceViewModel,
     onNavigateToTransactions: () -> Unit,
-    onNavigateToBudgets: () -> Unit
+    onNavigateToBudgets: () -> Unit,
+    onNavigateToSubscriptions: () -> Unit,
+    onNavigateToTax: () -> Unit,
+    onNavigateToBanks: () -> Unit,
+    onNavigateToSync: () -> Unit,
+    onNavigateToAi: () -> Unit
 ) {
     val transactions by viewModel.transactions.collectAsState()
     val health by viewModel.financialHealth.collectAsState()
+    val selectedCurrency by viewModel.selectedCurrency.collectAsState()
+    val syncMessage by viewModel.syncMessage.collectAsState()
 
     val netBalance = viewModel.getNetBalance()
     val totalIncome = viewModel.getTotalIncome()
     val totalExpense = viewModel.getTotalExpenses()
+    val totalTaxDeductions = viewModel.getTotalTaxDeductible()
 
     Scaffold(
         topBar = {
@@ -68,16 +70,22 @@ fun DashboardScreen(
                     }
                 },
                 actions = {
-                    Icon(
-                        imageVector = Icons.Default.Shield,
-                        contentDescription = "Encrypted",
-                        tint = EmeraldPrimary,
-                        modifier = Modifier.padding(end = 12.dp)
-                    )
+                    IconButton(onClick = onNavigateToSync) {
+                        Icon(
+                            imageVector = Icons.Default.CloudSync,
+                            contentDescription = "Sync",
+                            tint = EmeraldPrimary
+                        )
+                    }
+                    IconButton(onClick = onNavigateToTax) {
+                        Icon(
+                            imageVector = Icons.Default.Calculate,
+                            contentDescription = "Tax",
+                            tint = TextSecondary
+                        )
+                    }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DarkBackground
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground)
             )
         },
         containerColor = DarkBackground
@@ -89,6 +97,55 @@ fun DashboardScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Currency Switcher Chips
+            item {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(viewModel.supportedCurrencies) { curr ->
+                        val isSelected = selectedCurrency.code == curr.code
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { viewModel.selectCurrency(curr) },
+                            label = { Text("${curr.flag} ${curr.code}", fontSize = 11.sp) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = EmeraldPrimary,
+                                selectedLabelColor = DarkBackground,
+                                containerColor = DarkSurface,
+                                labelColor = TextSecondary
+                            )
+                        )
+                    }
+                }
+            }
+
+            // Sync alert if any
+            if (syncMessage != null) {
+                item {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = EmeraldPrimary.copy(alpha = 0.15f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(syncMessage ?: "", fontSize = 11.sp, color = EmeraldPrimary)
+                            Text(
+                                "DISMISS",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = EmeraldPrimary,
+                                modifier = Modifier.clickable { viewModel.clearSyncMessage() }
+                            )
+                        }
+                    }
+                }
+            }
+
             // Net Balance Card
             item {
                 Card(
@@ -105,7 +162,7 @@ fun DashboardScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = String.format("$%,.2f", netBalance),
+                            text = viewModel.formatAmount(netBalance),
                             fontSize = 32.sp,
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary
@@ -135,7 +192,7 @@ fun DashboardScreen(
                                 Column {
                                     Text("Income", fontSize = 10.sp, color = TextMuted)
                                     Text(
-                                        String.format("+$%,.2f", totalIncome),
+                                        "+${viewModel.formatAmount(totalIncome)}",
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = EmeraldPrimary
@@ -161,7 +218,7 @@ fun DashboardScreen(
                                 Column {
                                     Text("Expenses", fontSize = 10.sp, color = TextMuted)
                                     Text(
-                                        String.format("-$%,.2f", totalExpense),
+                                        "-${viewModel.formatAmount(totalExpense)}",
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = RoseExpense
@@ -173,7 +230,60 @@ fun DashboardScreen(
                 }
             }
 
-            // Quick Log Widget Presets
+            // Quick Hub Links (Subscriptions, Tax, Banks)
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onNavigateToSubscriptions() },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = DarkSurface)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Icon(Icons.Default.Layers, contentDescription = null, tint = IndigoAccent, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("SaaS Subs", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                            Text(viewModel.formatAmount(viewModel.getTotalMonthlySubscriptions()) + "/mo", fontSize = 9.sp, color = TextMuted)
+                        }
+                    }
+
+                    Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onNavigateToTax() },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = DarkSurface)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Icon(Icons.Default.Calculate, contentDescription = null, tint = EmeraldPrimary, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("Tax Deductible", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                            Text(viewModel.formatAmount(totalTaxDeductions), fontSize = 9.sp, color = EmeraldPrimary)
+                        }
+                    }
+
+                    Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onNavigateToBanks() },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = DarkSurface)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Icon(Icons.Default.AccountBalance, contentDescription = null, tint = CyanAccent, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("Bank Sync", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                            Text("3 Accounts", fontSize = 9.sp, color = TextMuted)
+                        }
+                    }
+                }
+            }
+
+            // 1-Tap Quick Log Widget Presets
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -187,12 +297,12 @@ fun DashboardScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                "1-Tap Quick Log Presets",
+                                "1-Tap Quick-Log Micro Presets",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = TextPrimary
                             )
-                            Text("Synced to Widget", fontSize = 10.sp, color = EmeraldPrimary)
+                            Text("Android Home Widget", fontSize = 10.sp, color = EmeraldPrimary)
                         }
 
                         Spacer(modifier = Modifier.height(10.dp))
@@ -247,7 +357,9 @@ fun DashboardScreen(
             // Gemini Health Audit Snapshot
             item {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onNavigateToAi() },
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = DarkSurface)
                 ) {
@@ -257,12 +369,16 @@ fun DashboardScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                "Gemini Financial Health Score",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = IndigoAccent, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    "Gemini AI Health Audit",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary
+                                )
+                            }
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
                                 color = EmeraldPrimary.copy(alpha = 0.2f)
@@ -301,7 +417,7 @@ fun DashboardScreen(
                         color = TextPrimary
                     )
                     TextButton(onClick = onNavigateToTransactions) {
-                        Text("View All", fontSize = 12.sp, color = EmeraldPrimary)
+                        Text("View Ledger", fontSize = 12.sp, color = EmeraldPrimary)
                     }
                 }
             }
@@ -320,7 +436,7 @@ fun DashboardScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = tx.description,
                                 fontSize = 13.sp,
@@ -346,7 +462,7 @@ fun DashboardScreen(
                         }
 
                         Text(
-                            text = (if (tx.type == "income") "+" else "-") + String.format("$%,.2f", tx.amount),
+                            text = (if (tx.type == "income") "+" else "-") + viewModel.formatAmount(tx.amount),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = if (tx.type == "income") EmeraldPrimary else TextPrimary

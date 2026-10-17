@@ -2,13 +2,16 @@ package com.apexledger.app
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material3.*
@@ -29,6 +32,7 @@ class ComposeMainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setContent {
             ApexLedgerTheme {
                 MainAppNav(viewModel)
@@ -40,6 +44,13 @@ class ComposeMainActivity : ComponentActivity() {
 @Composable
 fun MainAppNav(viewModel: FinanceViewModel) {
     var currentTab by remember { mutableStateOf("dashboard") }
+
+    // Handle back button for sub-screens
+    if (currentTab != "dashboard") {
+        BackHandler {
+            currentTab = "dashboard"
+        }
+    }
 
     Scaffold(
         bottomBar = {
@@ -89,6 +100,20 @@ fun MainAppNav(viewModel: FinanceViewModel) {
                 )
 
                 NavigationBarItem(
+                    selected = currentTab == "subscriptions",
+                    onClick = { currentTab = "subscriptions" },
+                    icon = { Icon(Icons.Default.Layers, contentDescription = "SaaS") },
+                    label = { Text("SaaS") },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = EmeraldPrimary,
+                        selectedTextColor = EmeraldPrimary,
+                        indicatorColor = EmeraldPrimary.copy(alpha = 0.15f),
+                        unselectedIconColor = TextMuted,
+                        unselectedTextColor = TextSecondary
+                    )
+                )
+
+                NavigationBarItem(
                     selected = currentTab == "ai",
                     onClick = { currentTab = "ai" },
                     icon = { Icon(Icons.Default.AutoAwesome, contentDescription = "Gemini") },
@@ -115,7 +140,12 @@ fun MainAppNav(viewModel: FinanceViewModel) {
                 "dashboard" -> DashboardScreen(
                     viewModel = viewModel,
                     onNavigateToTransactions = { currentTab = "transactions" },
-                    onNavigateToBudgets = { currentTab = "budgets" }
+                    onNavigateToBudgets = { currentTab = "budgets" },
+                    onNavigateToSubscriptions = { currentTab = "subscriptions" },
+                    onNavigateToTax = { currentTab = "tax" },
+                    onNavigateToBanks = { currentTab = "banks" },
+                    onNavigateToSync = { currentTab = "sync" },
+                    onNavigateToAi = { currentTab = "ai" }
                 )
                 "transactions" -> TransactionsScreen(
                     viewModel = viewModel,
@@ -125,7 +155,23 @@ fun MainAppNav(viewModel: FinanceViewModel) {
                     viewModel = viewModel,
                     onBack = { currentTab = "dashboard" }
                 )
+                "subscriptions" -> SubscriptionsScreen(
+                    viewModel = viewModel,
+                    onBack = { currentTab = "dashboard" }
+                )
                 "ai" -> AiInsightsScreen(
+                    viewModel = viewModel,
+                    onBack = { currentTab = "dashboard" }
+                )
+                "tax" -> TaxScreen(
+                    viewModel = viewModel,
+                    onBack = { currentTab = "dashboard" }
+                )
+                "banks" -> BankSyncScreen(
+                    viewModel = viewModel,
+                    onBack = { currentTab = "dashboard" }
+                )
+                "sync" -> CrossPlatformSyncScreen(
                     viewModel = viewModel,
                     onBack = { currentTab = "dashboard" }
                 )
